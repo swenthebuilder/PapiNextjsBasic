@@ -6,7 +6,7 @@ import { isScAvailableScProvider } from "./isScAvailable";
 import { settings } from "../settings";
 import { GetChainById } from "./ChainSpecs";
 import { getWsProvider } from "polkadot-api/ws-provider/web";
-import { MapCache } from "../utils/useCache";
+import { MapCache } from "../utils/useMapCache";
 
 const savedSettings = settings.get("settings");
 const clientCache = new MapCache<string, PolkadotClient>();

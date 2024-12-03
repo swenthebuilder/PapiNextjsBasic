@@ -1,14 +1,44 @@
-import { MapCache } from "@/app/utils/useCache";
-import { GetChainById } from "./ChainSpecs";
+"use client";
+import { MapCache } from "../utils/useMapCache";
 import { GetClient } from "./GetClient";
-import { ChainDefinition, TypedApi } from "polkadot-api";
+import { polkadotD, polkadotC, polkadotAH } from "@polkadot-api/descriptors";
+import { TypedApi } from "polkadot-api";
 
-const ApiCache = new MapCache<string, TypedApi<ChainDefinition>>();
+// Create a union type of all possible descriptors
+type SupportedDescriptor = 
+  | typeof polkadotD 
+  | typeof polkadotC 
+  | typeof polkadotAH;
+
+// Type-safe descriptor mapping
+const ChainDescriptors: Record<string, SupportedDescriptor> = {
+  'polkadot': polkadotD,
+  'polkadotC': polkadotC,
+  'polkadotAH': polkadotAH,
+  // Add more chain-specific descriptors as needed
+};
+
+// Create a type-safe cache and GetApi function
+const ApiCache = new MapCache<string, TypedApi<SupportedDescriptor>>();
 
 export const GetApi = async (chainId: string) => {
-  const client = await GetClient(chainId);
-  const chainInfo = GetChainById(chainId);
-  const Api = client.getTypedApi(chainInfo!.Descriptor);
-  ApiCache.set(chainId, Api);
-  return Api;
+  return ApiCache.getOrSet(chainId, async () => {
+    try {
+      const client = await GetClient(chainId);
+      const cachedApi = ApiCache.get(chainId);
+      if (cachedApi) {
+        return cachedApi;
+      }
+    
+      // Select the appropriate descriptor, fallback to default if not found
+      const descriptor = ChainDescriptors[chainId] || ChainDescriptors['polkadot'];
+      
+      const Api = client.getTypedApi(descriptor);
+      ApiCache.set(chainId, Api);
+      return Api as TypedApi<typeof descriptor>;
+    } catch (error) {
+      console.error("Failed to create client:", error);
+      throw error;
+    }
+  });
 };
